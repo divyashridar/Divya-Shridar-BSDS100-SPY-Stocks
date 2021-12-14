@@ -1,0 +1,201 @@
+---
+title: "Divya Shridar SPY Stocks Final Project BSDS100"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+In this data set, we will find out if we can predict the SPY symbol (SPDR S&P 500) on the NYSE Arca stock market. We will try to predict the Date as a linear function of Open, Close, High, Volume and Low values. 
+
+This data set interested me for numerous reasons. Growing up, my parents were always very invested in trading and the stock markets. When this project was presented to our Data Science class, I thought this would be the perfect opportunity to dip my toes into the field of stock investment, and decided to choose this as my topic, as it gave me time and an opportunity to get interested. Additionally, though stocks are just a fraction of the representation of the economy, the stock market was massively impacted during the pandemic, and resulted in enormous fluctuation in the market trends. I thought this would make it much more interesting to analyze.
+
+About the data set: Contains values from November 28th, 2016, to November 26th, 2021. 
+```{r}
+library(tidyverse)
+SPY_df<-read_csv('SPY.csv')
+
+nrow(SPY_df) #this tells us the observations number
+summary(SPY_df) #this tells us the min, max, median, mean, 1st and 3rd quantile 
+#for each variable in the data set
+spy_new<-SPY_df%>%
+  mutate(day_num=1:n())%>%
+  select(-`Adj Close`)%>%
+  select(-Date)
+#^Here we are altering the data set into a new one containing solely numeric values
+#(instead of the date format, 
+#it is a day counter with 
+#day 1=11/28/2016, and we 
+#remove irrelevant columns like Adj Close)
+
+
+#Below is some relevant information regarding the new, altered data set
+#observe that all the features are numerical
+nrow(spy_new)
+ncol(spy_new)
+summary(spy_new)
+
+
+```
+
+We now plot Date (or day number) against the Open value (which is the price the stock is valued at when market opens everyday).
+After this, we find the correlation coefficient between the day number/date and the open value each day.
+```{r}
+spy_new%>%
+  ggplot(aes(x=day_num, y=Open))+
+  geom_point()
+cor(spy_new$day_num,spy_new$Open)
+#0.9036518 this tells us there is a strong linear association between the date and open values.
+```
+
+We then plot Date (or day number) against the Close value (which is the price the stock is valued at when market closes everyday).
+After plotting these variables against each other, we find the correlation coefficient between the day number/date and the close value each day.
+```{r}
+spy_new%>%
+  ggplot(aes(x=day_num, y=Close))+
+  geom_point()
+cor(spy_new$day_num,spy_new$Close)
+# 0.9037056 this tells us there is a strong linear association between the date and closing values.
+```
+
+
+After this, we plot Date (or day number) against the High value (which is the highest price the stock is valued at in the market during the interval of one day).
+After plotting these variables against one another, we find a correlation coefficient as shown below. 
+```{r}
+spy_new%>%
+  ggplot(aes(x=day_num, y=High))+
+  geom_point()
+
+cor(spy_new$day_num,spy_new$High)
+# 0.908725 this tells us there is a strong linear association between the date and high values.
+```
+
+
+Now, we plot Date (or day number) against the Low value (which is the lowest price the stock is valued at in the market during the interval of one day).
+```{r}
+spy_new%>%
+  ggplot(aes(x=day_num, y=Low))+
+  geom_point()
+cor(spy_new$day_num,spy_new$Low)
+# 0.8985178 this tells us there is a strong linear association between the date and low values. However, this correlation is weaker than the correlation coefficients we analyzed earlier
+```
+
+Lastly, we plot Date (or day number) against the Volume value (which is the number of shares traded in a stock).
+```{r}
+spy_new%>%
+  ggplot(aes(x=day_num, y=Volume))+
+  geom_point()
+cor(spy_new$day_num,spy_new$Volume)
+# -0.01144017 this tells us there is not a strong linear association (and if so, there 
+#is a slightly negative correlation) 
+#between the date and volume values.
+#Additionally, when we plot this, it is very scattered. But the fact that the 
+#volume numbers are high allows us to 
+#infer that this is a stable stock to
+#invest in (as the number of shares 
+#traded in the stock are relatively high).
+```
+
+Now let's find a linear regression model that will predict Day_num as a function of Open, Close, High, Low and Volume.
+```{r}
+linear_model_adv<-lm(day_num~Open+Close+High+Low+Volume,spy_new)
+linear_model_adv
+#Coefficients:
+#(Intercept)         Open        Close         High          Low       Volume  
+#-8.802e+02   -6.567e+00    8.564e-01    5.163e+01   -4.119e+01   -1.111e-06
+```
+
+
+Multiple Linear Regression Model:
+```{r}
+str(spy_new)
+str(SPY_df)
+summary(linear_model_adv)
+lin_model2<-lm(day_num~.-Volume,spy_new)
+summary(lin_model2)
+
+#day_num=-8.802e+02+-6.567e+00*Open+8.564e-01*Close+5.163e+01*High+-4.119e+01*Low+-1.112e-06*Volume
+
+day_num=25
+Open=225.04
+High=225.83
+Low=223.88
+Close=225.24
+Volume=91366500
+
+single_obs<-data.frame(day_num=25,Open=225.04,High=225.83,Low=223.88,Close=225.24,Volume=91366500)
+single_obs
+```
+
+Our prediction for the charges for this single observation:
+```{r}
+predict(lin_model2,single_obs) #181.1431
+
+#Long way to obtain the prediction:
+-8.802e+02+-6.567e+00*Open+8.564e-01*Close+5.163e+01*High+-4.119e+01*Low+-1.112e-06*Volume 
+#181.1431
+```
+
+Nonlinearity:
+```{r}
+plot(spy_new$day_num,spy_new$Open)
+model_open1<-lm(Open~day_num,spy_new)
+summary(model_open1) 
+#The R-squared is 0.8166, 
+#which is fairly high, allowing 
+#us to infer that the regression 
+#model fits the observed data well.
+#This also shows us that as time
+#passes, the open value for the stock increases. 
+model_open2<-lm(Open~day_num+I(day_num^2),spy_new)
+summary(model_open2) 
+#The R-squared is 0.9098, which
+#is quite high. This tells us that
+#the regression model also fits the
+#observed data well. This also shows
+#us that as time passes, the open
+#value for the stock increases. 
+model_open3<-lm(Open~day_num+I(day_num^2)+I(day_num^3),spy_new) 
+summary(model_open3) 
+#The R-squared is 0.9513, which is very high, allowing us to conclude that 
+#the regression model fits the observed
+#data well. This also shows us that as 
+#time passes, the open value for the 
+#stock increases. As you can see, which
+#each model_open variation, the r-squared
+#gets higher, and we become more precise
+#with the calculations. This shows us that
+#the more accurate we are, the higher
+#r-squared we will see (in this scenario),
+#and the better correlation the variables have.
+model_open4<-lm(Open~day_num+I(log(day_num)),spy_new)
+summary(model_open4) 
+#The R-squared is 0.8381, which is
+#relatively high, allowing us to deduce
+#that the regression model fits the
+#observed data pretty well. This also
+#shows us that as time passes, the 
+#open value for the stock increases. 
+```
+
+
+I attempted to remove the outliers from the table, and re-plotting the data. However, with a correlation coefficient so high, it was safe to assume (and I put this theory to the test as well) that there were not really any outliers, and even the micro outliers that existed did not impact the data set or regression models at all. 
+
+
+Boxplot:
+```{r}
+boxplot(spy_new)
+#^As you can see, volume is very different from the other variables, so we can try to remove
+#volume and compare everything else in a boxplot
+
+spy_noVolume<-spy_new%>%select(-Volume)
+a<-boxplot(spy_noVolume)
+
+summary(a) #this provides a summary of the boxplot with no volume 
+
+```
+
+Some general conclusions we can make from the graphs are that around day 800 (which is March 2020-when the Covid 19 pandemic started), there was a massive dip in all the graphs, but now, the values are at an all time high as they skyrocketed in the midst of the pandemic. 
+Though most of the graphs and the values look very similar, this is logical as this time series analysis SPDR S&P 500 is the open/close/high/low values of each day, and realistically the values do not fluctuate much in a 24 hour window. Therefore, when you compare it on a 24 hour basis, there should not be much variation between the graphs. However, the dataset initially contained data from the past 10 years. My computer could not handle this much data, so I cut it down to the past 5 years. Finally, since this was a fairly new concept for me, in the beginning, I had a bit of difficulty figuring out the meaning behind each value. But after extensive research, I was able to grasp the meaning behind each value, and properly analyze the data. 
+
+
+
